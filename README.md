@@ -15,12 +15,14 @@
 Usage is simply a matter of passing the name of the format class to
 the `rspec` command via the `-f` option.
 
-  $ rspec -f RSpec::TapY
+    $ rspec -f RSpec::TapY
 
 
 ## Installation
 
-  $ gem install rspec-ontap
+Installation follows the usual pattern:
+
+    $ gem install rspec-ontap
 
 
 ## Copyrights
