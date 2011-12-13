@@ -9,6 +9,8 @@
 
 **RSpec On Tap** is a TAP-Y/J formatter for RSpec.
 
+You can learn more about TAP-Y/J [here](https://github.com/rubyworks/tapout).
+
 
 ## Usage
 
