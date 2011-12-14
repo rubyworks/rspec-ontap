@@ -46,7 +46,7 @@
 
     <p><strong>RSpec On Tap</strong> is a TAP-Y/J formatter for RSpec.</p>
 
-    <p>You can learn more about TAP-Y/J <a href="http://rubyworks.github.com/tapout">here</a>.</p>
+    <p>You can learn more about <a href="http://rubyworks.github.com/tapout">TAP-Y/J</a>.</p>
 
     <h2>Usage</h2>
 
@@ -60,6 +60,14 @@
 
     <pre><code>$ rspec -f RSpec::TapY spec/*.rb
     </code></pre>
+
+    <p>With TAP-Y in hand, one can then use TapOut to produce a variety of
+    other formats:</p>
+
+    <pre><code>$ rspec -f RSpec::TapY spec/*.rb | tapout progress
+    </code></pre>
+
+    <p>You can learn more about <a href="http://rubyworks.github.com/tapout">TapOput</a>.</p>
 
     <h2>Installation</h2>
 
