@@ -1,39 +1,105 @@
-<h1>RSpec On Tap</h1>
+<html>
+<head>
+  <link rel="icon" type="iamge/x-png" href="assets/images/icon.png" />
 
-<p><a href="http://rubyworks.github.com/rspec-ontap">Homepage</a> |
-<a href="http://github.com/rubyworks/rspec-ontap">Source Code</a> |
-<a href="http://github.com/rubyworks/rspec-ontap/issues">Report Issue</a></p>
+  <style>
+    html { font-family: sans-serif; font-size: 10pt; color: #333; }
+    body { margin: 0; padding: 0; }
+    pre { padding: 20px 20px 10px 20px; background: #000; font-size: 0.9em;
+          font-family: courier; font-weight: bold; color: #1e1; 
+          border: 1px solid #ccc;
+        }
+    .inner { width:720px; margin:0 auto; }
+    #header { background: url(assets/images/header-bg.png) repeat-x bottom; margin: 0; height: 70px; }
+    #header h1 { padding-top: 20px; }
+    #nav { background: url(assets/images/nav-bg.png) repeat-x; padding: 5px 0 10px 0; margin: 0; }
+    #nav a { color: #0f0; text-decoration: none; }
+    #nav a:hover { text-decoration: underline; }
+    h2 { letter-spacing: 1px; margin-top: 33px; padding: 0px; }
+    #main { width:720px; margin:0 auto; }
+    #footer { margin: 40px 0; }
+  </style>
+</head>
 
-<h2>Description</h2>
+<body>
 
-<p><strong>RSpec On Tap</strong> is a TAP-Y/J formatter for RSpec.</p>
+<div id="header">
+<div class="inner">
+  <h1>RSpec On Tap</h1>
+</div>
+</div>
 
-<p>You can learn more about TAP-Y/J <a href="https://github.com/rubyworks/tapout">here</a>.</p>
+<div id="nav">
+<div class="inner">
+  <a href="http://rubyworks.github.com/rspec-ontap">Homepage</a> &nbsp;
+  <a href="http://github.com/rubyworks/rspec-ontap">Source Code</a> &nbsp;
+  <a href="http://github.com/rubyworks/rspec-ontap/issues">Report Issue</a>
+</div>
+</div>
 
-<h2>Usage</h2>
+<div id="main">
 
-<p>Usage is simply a matter of passing the name of the format class to
-the <code>rspec</code> command via the <code>-f</code> option.</p>
+  <div id="readme">
+    <h2>Description</h2>
 
-<pre><code>$ rspec -r rspec/ontap -f TapY spec/*.rb
-</code></pre>
+    <p><strong>RSpec On Tap</strong> is a TAP-Y/J formatter for RSpec.</p>
 
-<p>or</p>
+    <p>You can learn more about TAP-Y/J <a href="https://github.com/rubyworks/tapout">here</a>.</p>
 
-<pre><code>$ rspec -f RSpec::TapY spec/*.rb
-</code></pre>
+    <h2>Usage</h2>
 
-<h2>Installation</h2>
+    <p>Usage is simply a matter of passing the name of the format class to
+    the <code>rspec</code> command via the <code>-f</code> option.</p>
 
-<p>Installation follows the usual pattern:</p>
+    <pre><code>$ rspec -r rspec/ontap -f TapY spec/*.rb
+    </code></pre>
 
-<pre><code>$ gem install rspec-ontap
-</code></pre>
+    <p>or</p>
 
-<h2>Copyrights</h2>
+    <pre><code>$ rspec -f RSpec::TapY spec/*.rb
+    </code></pre>
 
-<p>Copyright (c) 2011 Rubyworks. All Rights Reserved.</p>
+    <h2>Installation</h2>
 
-<p>RSpecOnTap is distributable in accordance with the <em>FreeBSD</em> license.</p>
+    <p>Installation follows the usual pattern:</p>
 
-<p>See COPYING.md for details.</p>
+    <pre><code>$ gem install rspec-ontap
+    </code></pre>
+
+    <h2>Copyrights</h2>
+
+    <p>Copyright (c) 2011 Rubyworks. All Rights Reserved.</p>
+
+    <p>RSpecOnTap is distributable in accordance with the <em>FreeBSD</em> license.</p>
+
+    <p>See COPYING.md for details.</p>
+  </div>
+
+  <div id="footer">
+    <script type="text/javascript"><!--
+    google_ad_client = "ca-pub-1126154564663472";
+    /* RUBYWORKS 09-10-02 728x90 */
+    google_ad_slot = "0788888658";
+    google_ad_width = 728;
+    google_ad_height = 90;
+    //-->
+    </script>
+    <script type="text/javascript"
+    src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+    </script>
+  </div>
+
+</div>
+
+<div style="position: absolute; top: 0; right: 0;">
+  <a href="http://github.com/rubyworks/bicrypt"><img src="http://rubyworks.github.com/assets/images/fork-me.png" /></a>
+</div>
+
+<div id="rubyworks" style="position: fixed; bottom: 5px; right: 10px; padding: 0; opacity: 0.3;">
+  <a href="http://rubyworks.github.com">
+    <img src="http://rubyworks.github.com/assets/images/seal.png" height="150px" />
+  </a>
+</div>
+
+</body>
+</html>
