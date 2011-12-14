@@ -23,6 +23,14 @@ or
 
     $ rspec -f RSpec::TapY spec/*.rb
 
+With TAP-Y in hand, the `tapout` tool can then be used to produce a
+variety of other output formats. For example:
+
+    $ rspec -f RSpec::TapY spec/*.rb | tapout progress
+
+See the [TapOut project](http://rubyworks.github.com/tapout) for more
+information.
+
 
 ## Installation
 
