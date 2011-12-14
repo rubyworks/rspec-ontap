@@ -1,9 +1,11 @@
 #!mast .ruby .yardopts bin features lib man spec test [A-Z]*.*
 .ruby
 .yardopts
+lib/rspec/ontap.rb
 lib/rspec/tap.rb
 lib/rspec/tap_j.rb
 lib/rspec/tap_y.rb
 spec/demonstrate.rb
+HISTORY.md
 README.md
 COPYING.rdoc

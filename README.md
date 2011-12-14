@@ -17,7 +17,11 @@ You can learn more about TAP-Y/J [here](https://github.com/rubyworks/tapout).
 Usage is simply a matter of passing the name of the format class to
 the `rspec` command via the `-f` option.
 
-    $ rspec -f RSpec::TapY
+    $ rspec -r rspec/ontap -f TapY spec/*.rb
+
+or
+
+    $ rspec -f RSpec::TapY spec/*.rb
 
 
 ## Installation
