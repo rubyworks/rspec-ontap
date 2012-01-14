@@ -12,5 +12,9 @@ describe "demonstration" do
     raise NameError
   end
 
+  it "should capture stdout" do
+    puts "HELLO!"
+  end
+
 end
 

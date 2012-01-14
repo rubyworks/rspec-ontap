@@ -10,19 +10,25 @@ module RSpec
     # TAP-Y/J Revision
     REVISION = 3
 
+    #
     attr_accessor :example_group_stack
 
+    #
+    #
+    #
     def initialize(output)
       super(output)
       @example_group_stack = []
     end
 
+    #
     # This method is invoked before any examples are run, right after
     # they have all been collected. This can be useful for special
     # formatters that need to provide progress on feedback (graphical ones)
     #
     # This will only be invoked once, and the next one to be invoked
     # is #example_group_started
+    #
     def start(example_count)
       super(example_count)
 
@@ -38,11 +44,13 @@ module RSpec
       return doc
     end
 
+    #
     # This method is invoked at the beginning of the execution of each example group.
     # +example_group+ is the example_group.
     #
     # The next method to be invoked after this is +example_passed+,
     # +example_pending+, or +example_finished+
+    #
     def example_group_started(example_group)
       super(example_group) #@example_group = example_group
       doc = {
@@ -274,6 +282,20 @@ module RSpec
       caller =~ /(.+?):(\d+(?=:|\z))/ or return ""
       source_file, source_line = $1, $2.to_i
       return source_file, source_line
+    end
+
+    #
+    def capture_io
+      ostdout, ostderr = $stdout, $stderr
+      cstdout, cstderr = StringIO.new, StringIO.new
+      $stdout, $stderr = cstdout, cstderr
+
+      yield
+
+      return cstdout.string.chomp("\n"), cstderr.string.chomp("\n")
+    ensure
+      $stdout = ostdout
+      $stderr = ostderr
     end
 
   end
