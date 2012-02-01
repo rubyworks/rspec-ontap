@@ -31,8 +31,8 @@ revision: 0
 created: '2011-12-13'
 summary: RSpec On Tap-Y/J
 title: RSpecOnTap
-version: 0.1.0
+version: 0.2.0
 name: rspec-ontap
 description: RSpecOnTap is a TAP-Y/J formatter for RSpec.
 organization: Rubyworks
-date: '2011-12-12'
+date: '2012-02-01'

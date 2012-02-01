@@ -8,7 +8,7 @@ module RSpec
   class TapBaseFormatter < Core::Formatters::BaseFormatter
 
     # TAP-Y/J Revision
-    REVISION = 3
+    REVISION = 4
 
     #
     attr_accessor :example_group_stack
@@ -72,6 +72,8 @@ module RSpec
     #
     def example_started(example)
       examples << example
+      # set up stdout and stderr to be captured
+      reset_output
     end
 
     #
@@ -101,6 +103,9 @@ module RSpec
         #}
         'time' => Time.now - @start_time
       }
+
+      doc.update(captured_output)
+   
       return doc
     end
 
@@ -129,6 +134,9 @@ module RSpec
         #}
         'time' => Time.now - @start_time
       }
+
+      doc.update(captured_output)
+
       return doc
     end
 
@@ -192,6 +200,8 @@ module RSpec
         },
         'time' => Time.now - @start_time
       )
+
+      doc.update(captured_output)
 
       return doc
     end
@@ -285,6 +295,33 @@ module RSpec
     end
 
     #
+    def reset_output
+      @_oldout = $stdout
+      @_olderr = $stderr
+
+      @_newout = StringIO.new
+      @_newerr = StringIO.new
+
+      $stdout = @_newout
+      $stderr = @_newerr
+    end
+
+    #
+    def captured_output
+      stdout = @_newout.string.chomp("\n")
+      stderr = @_newerr.string.chomp("\n")
+
+      doc = {}
+      doc['stdout'] = stdout unless stdout.empty?
+      doc['stderr'] = stderr unless stderr.empty?
+
+      $stdout = @_oldout
+      $stderr = @_olderr
+
+      return doc
+    end
+
+    #
     def capture_io
       ostdout, ostderr = $stdout, $stderr
       cstdout, cstderr = StringIO.new, StringIO.new
@@ -327,7 +364,7 @@ module RSpec
     end
   end
 
-  #
+  #rspec -f RSpec::TapY spec/*.rb | tapout progress
   class TapJ < TapBaseFormatter
     def initialize(*whatever)
       require 'json'

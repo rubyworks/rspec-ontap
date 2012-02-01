@@ -2,7 +2,6 @@
 .ruby
 .yardopts
 lib/rspec/ontap.rb
-lib/rspec/tap.rb
 lib/rspec/tap_j.rb
 lib/rspec/tap_y.rb
 spec/demonstrate.rb
