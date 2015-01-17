@@ -70,9 +70,11 @@ module RSpec
       @example_group_stack.pop
     end
 
+    # Set up stdout and stderr to be captured.
+    #
+    # IMPORTANT: Comment out the `reset_output` line to debug!!!!!!!!!
     #
     def example_started(notification)
-      # set up stdout and stderr to be captured
       reset_output
     end
 
@@ -152,7 +154,7 @@ module RSpec
 
       file, line = example.location.split(':')
 
-      file = self.class.relative_path(file)
+      file = relative_path(file)
       line = line.to_i
 
       if RSpec::Expectations::ExpectationNotMetError === example.exception
@@ -166,7 +168,7 @@ module RSpec
         status = 'error'
       end
 
-      backtrace = format_backtrace(example.exception.backtrace, example)
+      backtrace = format_backtrace(example.exception.backtrace, example.metadata)
 
       efile, eline = parse_source_location(backtrace)
 
@@ -352,6 +354,8 @@ module RSpec
 
     #
     def captured_output
+      return unless (@_newout && @_newerr)
+
       stdout = @_newout.string.chomp("\n")
       stderr = @_newerr.string.chomp("\n")
 
@@ -377,6 +381,35 @@ module RSpec
     ensure
       $stdout = ostdout
       $stderr = ostderr
+    end
+
+    #
+    def relative_path_regex
+      @relative_path_regex ||= /(\A|\s)#{File.expand_path('.')}(#{File::SEPARATOR}|\s|\Z)/
+    end
+
+    # Get relative path of file.
+    #
+    # line - current code line [String] 
+    #
+    # Returns relative path to line. [String] 
+    def relative_path(line)
+      line = line.sub(relative_path_regex, "\\1.\\2".freeze)
+      line = line.sub(/\A([^:]+:\d+)$/, '\\1'.freeze)
+      return nil if line == '-e:1'.freeze
+      line
+    rescue SecurityError
+      nil
+    end
+
+    #
+    def format_backtrace(*args)
+      backtrace_formatter.format_backtrace(*args)
+    end
+
+    #
+    def backtrace_formatter
+      RSpec.configuration.backtrace_formatter
     end
 
   end
