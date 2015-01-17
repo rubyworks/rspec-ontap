@@ -1,0 +1,56 @@
+---
+revision: 2013
+type: ruby
+sources:
+- INDEX.yml
+authors:
+- name: Trans
+  email: transfire@gmail.com
+organizations:
+- name: Rubyworks
+requirements:
+- name: rspec
+- name: tapout
+- groups:
+  - build
+  development: true
+  name: mast
+- groups:
+  - build
+  development: true
+  name: indexer
+conflicts: []
+alternatives: []
+resources:
+- type: home
+  uri: http://rubyworks.github.com/rspec-ontap
+  label: Homepage
+- type: code
+  uri: http://github.com/rubyworks/rspec-ontap
+  label: Source Code
+- type: bugs
+  uri: http://github.com/rubyworks/rspec-ontap/issues
+  label: Issue Tracker
+- type: chat
+  uri: irc://chat.us.freenode.net#rubyworks
+  label: IRC Channel
+repositories:
+- name: upstream
+  scm: git
+  uri: git://github.com/rubyworks/rspec-ontap.git
+categories: []
+copyrights:
+- holder: Rubyworks
+  year: '2011'
+  license: BSD-2-Clause
+customs: []
+paths:
+  lib:
+  - lib
+name: rspec-ontap
+title: RSpec-On-Tap
+version: 0.3.0
+summary: RSpec On Tap-Y/J
+description: RSpec-On-Tap is a TAP-Y/J formatter for RSpec.
+created: '2011-12-13'
+date: '2015-01-17'

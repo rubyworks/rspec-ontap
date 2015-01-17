@@ -1,0 +1,43 @@
+---
+name:
+  rspec-ontap
+
+version:
+  0.3.0
+
+title:
+  RSpec-On-Tap
+
+summary:
+  RSpec On Tap-Y/J
+
+description:
+  RSpec-On-Tap is a TAP-Y/J formatter for RSpec.
+
+requirements:
+- rspec
+- tapout
+- mast (build)
+- indexer (build)
+#- detroit (build)
+
+resources:
+  home: http://rubyworks.github.com/rspec-ontap
+  code: http://github.com/rubyworks/rspec-ontap
+  bugs: http://github.com/rubyworks/rspec-ontap/issues
+  chat: irc://chat.us.freenode.net#rubyworks
+
+repositories:
+  upstream: git://github.com/rubyworks/rspec-ontap.git
+
+authors:
+- Trans <transfire@gmail.com>
+
+organizations:
+- Rubyworks
+
+copyrights:
+- (c) 2011 Rubyworks (BSD-2-Clause)
+
+created:
+  2011-12-13

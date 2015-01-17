@@ -1,11 +1,11 @@
 describe "demonstration" do
 
   it "should show this passing" do
-    1.should == 1
+    expect(1).to == 1
   end
 
   it "should show this failing" do
-    1.should == 2
+    expect(1).to == 2
   end
 
   it "should show this raising an error" do

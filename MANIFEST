@@ -1,10 +1,9 @@
-#!mast .ruby .yardopts bin features lib man spec test [A-Z]*.*
-.ruby
+#!mast .index .yardopts bin features lib man spec test *.md *.txt
+.index
 .yardopts
 lib/rspec/ontap.rb
 lib/rspec/tap_j.rb
 lib/rspec/tap_y.rb
-spec/demonstrate.rb
-HISTORY.md
 README.md
-COPYING.rdoc
+HISTORY.md
+LICENSE.txt

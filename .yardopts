@@ -3,5 +3,7 @@
 --private
 lib/
 -
-[A-Z]*.*
+*.md
+*.txt
+*.yml
 

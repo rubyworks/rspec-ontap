@@ -14,8 +14,6 @@ module RSpec
     attr_accessor :example_group_stack
 
     #
-    #
-    #
     def initialize(output)
       super(output)
       @example_group_stack = []
@@ -29,15 +27,16 @@ module RSpec
     # This will only be invoked once, and the next one to be invoked
     # is #example_group_started
     #
-    def start(example_count)
-      super(example_count)
+    def start(notification)
+      # there is a super method for this
+      super(notification)
 
       @start_time = Time.now
 
       doc = {
         'type'  => 'suite',
         'start' => @start_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'count' => example_count,
+        'count' => notification.count,
         'seed'  => @seed,
         'rev'   => REVISION
       }
@@ -51,12 +50,13 @@ module RSpec
     # The next method to be invoked after this is +example_passed+,
     # +example_pending+, or +example_finished+
     #
-    def example_group_started(example_group)
-      super(example_group) #@example_group = example_group
+    def example_group_started(notification)
+      # there is a super method for this
+      super(notification)
       doc = {
         'type'    => 'case',
         'subtype' => 'describe',
-        'label'   => "#{example_group.description}",
+        'label'   => "#{notification.group.description}",
         'level'   => @example_group_stack.size
       }
       @example_group_stack << example_group
@@ -65,20 +65,22 @@ module RSpec
 
     # This method is invoked at the end of the execution of each example group.
     # +example_group+ is the example_group.
-    def example_group_finished(example_group)
+    def example_group_finished(notification)
+      #super(notification)
       @example_group_stack.pop
     end
 
     #
-    def example_started(example)
-      examples << example
+    def example_started(notification)
       # set up stdout and stderr to be captured
       reset_output
     end
 
     #
-    def example_passed(example)
-      super(example)
+    def example_passed(notification)
+      #super(notification)
+
+      example = notification.example
 
       file, line = example.location.split(':')
       file = self.class.relative_path(file)
@@ -110,8 +112,10 @@ module RSpec
     end
 
     #
-    def example_pending(example)
-      super(example)
+    def example_pending(notification)
+      #super(notification)
+
+      example = notification.example
 
       file, line = example.location.split(':')
       file = self.class.relative_path(file)
@@ -140,8 +144,11 @@ module RSpec
       return doc
     end
 
-    def example_failed(example)
-      super(example)
+    #
+    def example_failed(notification)
+      #super(notification)
+
+      example = notification.example
 
       file, line = example.location.split(':')
 
@@ -206,20 +213,20 @@ module RSpec
       return doc
     end
 
-    # @todo Is this a note?
-    def message(message)
-    end
-
-    #def stop
-    #end
-
     # This method is invoked after the dumping of examples and failures.
-    def dump_summary(duration, example_count, failure_count, pending_count)
-      super(duration, example_count, failure_count, pending_count)
+    def dump_summary(summary_notification)
+      #super(summary_notification)
+
+      duration      = summary_notification.duration
+      example_count = summary_notification.examples.size
+      failure_count = summary_notification.failed_examples.size
+      pending_count = summary_notification.pending_examples.size
+
+      failed_examples = summary_notification.failed_examples
 
       error_count = 0
 
-      @failed_examples.each do |e|
+      failed_examples.each do |e|
         if RSpec::Expectations::ExpectationNotMetError === e.exception
           #failure_count += 1
         else
@@ -249,8 +256,45 @@ module RSpec
     #def dump_pending
     #end
 
-    def seed(number)
-      @seed = number
+    def seed(notification)
+      @seed = notification.seed
+    end
+
+    # Add any messages as notes.
+    def message(message_notification)
+      doc = {
+        'type' => 'note',
+        'text' => message_notification.message
+      }
+      return doc
+    end
+
+    #
+    # NOTE: None of the following are being used. If ever added, be sure
+    #       to activate in register calls below.
+    #
+
+    # (not used)
+    def stop(examples_notification)
+      super(examples_notification)
+    end
+
+    # (not used)
+    def start_dump(null_notification)
+    end
+
+    # (not used)
+    def dump_pending(examples_notification)
+    end
+
+    # (not used)
+    def dump_failures(examples_notification)
+    end
+
+    # (not used)
+    def close(null_notification)
+      # there is a super method for this
+      super(null_notification)
     end
 
   private
@@ -339,54 +383,92 @@ module RSpec
 
   #
   class TapY < TapBaseFormatter
-    def initialize(*whatever)
+    ::RSpec::Core::Formatters.register self, 
+        :start,
+        :example_group_started,
+        :example_group_finished,
+        :example_started,
+        :example_passed,
+        :example_failed,
+        :example_pending,
+        :dump_summary,
+        :seed,
+        :message,
+        #:stop,
+        #:start_dump,
+        #:dump_pending,
+        #:dump_failures,
+        :close
+
+    def initialize(*args)
       require 'yaml'
-      super(*whatever)
+      super(*args)
     end
-    def start(example_count)
-      output.puts super(example_count).to_yaml
+    def start(*args)
+      output.puts super(*args).to_yaml
     end
-    def example_group_started(example_group)
-      output.puts super(example_group).to_yaml
+    def example_group_started(*args)
+      output.puts super(*args).to_yaml
     end
-    def example_passed(example)
-      output.puts super(example).to_yaml
+    def example_passed(*args)
+      output.puts super(*args).to_yaml
     end
-    def example_pending(example)
-      output.puts super(example).to_yaml
+    def example_pending(*args)
+      output.puts super(*args).to_yaml
     end
-    def example_failed(example)
-      output.puts super(example).to_yaml
+    def example_failed(*args)
+      output.puts super(*args).to_yaml
     end
-    def dump_summary(duration, example_count, failure_count, pending_count)
-      output.puts super(duration, example_count, failure_count, pending_count).to_yaml
+    #def dump_summary(duration, example_count, failure_count, pending_count)
+    #  output.puts super(duration, example_count, failure_count, pending_count).to_yaml
+    #  output.puts "..."
+    #end
+    def dump_summary(*args)
+      output.puts super(*args).to_yaml
       output.puts "..."
     end
   end
 
   #rspec -f RSpec::TapY spec/*.rb | tapout progress
   class TapJ < TapBaseFormatter
-    def initialize(*whatever)
+    ::RSpec::Core::Formatters.register self, 
+        :start,
+        :example_group_started,
+        :example_group_finished,
+        :example_started,
+        :example_passed,
+        :example_failed,
+        :example_pending,
+        :dump_summary,
+        :seed,
+        :message,
+        #:stop,
+        #:start_dump,
+        #:dump_pending,
+        #:dump_failures,
+        :close
+
+    def initialize(*args)
       require 'json'
-      super(*whatever)
+      super(*args)
     end
-    def start(example_count)
-      output.puts super(example_count).to_json
+    def start(*args)
+      output.puts super(*args).to_json
     end
-    def example_group_started(example_group)
-      output.puts super(example_group).to_json
+    def example_group_started(*args)
+      output.puts super(*args).to_json
     end
-    def example_passed(example)
-      output.puts super(example).to_json
+    def example_passed(*args)
+      output.puts super(*args).to_json
     end
-    def example_pending(example)
-      output.puts super(example).to_json
+    def example_pending(*args)
+      output.puts super(*args).to_json
     end
-    def example_failed(example)
-      output.puts super(example).to_json
+    def example_failed(*args)
+      output.puts super(*args).to_json
     end
-    def dump_summary(duration, example_count, failure_count, pending_count)
-      output.puts super(duration, example_count, failure_count, pending_count).to_json
+    def dump_summary(*args)
+      output.puts super(*args).to_json
     end
   end
 
