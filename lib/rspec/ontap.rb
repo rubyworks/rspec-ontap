@@ -85,7 +85,8 @@ module RSpec
       example = notification.example
 
       file, line = example.location.split(':')
-      file = self.class.relative_path(file)
+      #file = self.class.relative_path(file)
+      file = relative_path(file)
       line = line.to_i
 
       doc = {
@@ -120,7 +121,8 @@ module RSpec
       example = notification.example
 
       file, line = example.location.split(':')
-      file = self.class.relative_path(file)
+      #file = self.class.relative_path(file)
+      file = relative_path(file)
       line = line.to_i
 
       doc = {
