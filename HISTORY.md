@@ -1,6 +1,6 @@
 # Release History
 
-## Unreleased
+## 0.4.0 / 2026-11-22
 
 RSpec On Tap runs on current Ruby and RSpec, and tells skipped examples
 from pending ones. It needs Ruby 2.7 or newer and RSpec 3.
