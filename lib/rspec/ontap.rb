@@ -1,512 +1,344 @@
+require 'rspec/core'
 require 'rspec/core/formatters/base_formatter'
+require 'rspec/ontap/version'
+require 'stringio'
 
 module RSpec
-  #module Core
-    #module Formatters
 
-  #  
+  # Base class of the TAP-Y and TAP-J formatters. It turns RSpec's
+  # notifications into the records of a TAP-Y/J stream; the subclasses
+  # write them out.
+  #
+  # While an example runs, `$stdout` and `$stderr` are captured, so that
+  # what it prints becomes part of its record instead of breaking the
+  # stream.
   class TapBaseFormatter < Core::Formatters::BaseFormatter
 
-    # TAP-Y/J Revision
+    # TAP-Y/J revision.
     REVISION = 4
 
-    #
-    attr_accessor :example_group_stack
+    # Number of lines of source to show on each side of a line.
+    SNIPPET_RADIUS = 2
 
-    #
+    # The notifications the formatters ask RSpec for.
+    NOTIFICATIONS = [
+      :start,
+      :example_group_started,
+      :example_group_finished,
+      :example_started,
+      :example_passed,
+      :example_failed,
+      :example_pending,
+      :message,
+      :dump_summary,
+      :close
+    ]
+
     def initialize(output)
       super(output)
-      @example_group_stack = []
+      # Tapout reads from a pipe, so nothing should wait in a buffer.
+      output.sync = true if output.respond_to?(:sync=)
+      @group_level  = 0
+      @source_cache = {}
+      @omit_count   = 0
+      @early_notes  = []
     end
 
-    #
-    # This method is invoked before any examples are run, right after
-    # they have all been collected. This can be useful for special
-    # formatters that need to provide progress on feedback (graphical ones)
-    #
-    # This will only be invoked once, and the next one to be invoked
-    # is #example_group_started
-    #
+    # Invoked once, before any example runs.
     def start(notification)
-      # there is a super method for this
-      super(notification)
-
+      super
       @start_time = Time.now
-
-      doc = {
+      @seed = configuration.seed if configuration.seed_used?
+      emit(
         'type'  => 'suite',
         'start' => @start_time.strftime('%Y-%m-%d %H:%M:%S'),
         'count' => notification.count,
         'seed'  => @seed,
         'rev'   => REVISION
-      }
-      return doc
+      )
+      @early_notes.each { |note| emit note }
+      @early_notes = nil
     end
 
-    #
-    # This method is invoked at the beginning of the execution of each example group.
-    # +example_group+ is the example_group.
-    #
-    # The next method to be invoked after this is +example_passed+,
-    # +example_pending+, or +example_finished+
-    #
+    # Invoked at the start of each example group.
     def example_group_started(notification)
-      # there is a super method for this
-      super(notification)
-      doc = {
+      super
+      emit(
         'type'    => 'case',
         'subtype' => 'describe',
-        'label'   => "#{notification.group.description}",
-        'level'   => @example_group_stack.size
-      }
-      @example_group_stack << example_group
-      return doc
+        'label'   => notification.group.description.to_s,
+        'level'   => @group_level
+      )
+      @group_level += 1
     end
 
-    # This method is invoked at the end of the execution of each example group.
-    # +example_group+ is the example_group.
+    # Invoked at the end of each example group.
     def example_group_finished(notification)
-      #super(notification)
-      @example_group_stack.pop
+      @group_level -= 1
     end
 
-    # Set up stdout and stderr to be captured.
-    #
-    # IMPORTANT: Comment out the `reset_output` line to debug!!!!!!!!!
-    #
+    # Invoked before each example. Starts capturing its output.
     def example_started(notification)
-      reset_output
+      capture_output
     end
 
     #
     def example_passed(notification)
-      #super(notification)
-
-      example = notification.example
-
-      file, line = example.location.split(':')
-      #file = self.class.relative_path(file)
-      file = relative_path(file)
-      line = line.to_i
-
-      doc = {
-        'type'     => 'test',
-        'subtype'  => 'it',
-        'status'   => 'pass',
-        #'setup': foo instance
-        'label'    => "#{example.description}",
-        #'expected' => 2
-        #'returned' => 2
-        'file'     => file,
-        'line'     => line,
-        'source'   => source(file)[line-1].strip,
-        'snippet'  => code_snippet(file, line),
-        #'coverage' => {
-        #  file: lib/foo.rb
-        #  line: 11..13
-        #  code: Foo#*
-        #}
-        'time' => Time.now - @start_time
-      }
-
-      doc.update(captured_output)
-   
-      return doc
+      emit test_record(notification.example, 'pass')
     end
 
+    # Invoked for an example that was skipped or is pending.
     #
+    # An example that was skipped (`skip`, `xit`) is an `omit` in
+    # TAP-Y/J. One that is pending, or has no body yet, is a `todo`.
     def example_pending(notification)
-      #super(notification)
-
       example = notification.example
+      reason  = example.execution_result.pending_message.to_s
 
-      file, line = example.location.split(':')
-      #file = self.class.relative_path(file)
-      file = relative_path(file)
-      line = line.to_i
+      if example.skipped? && reason != Core::Pending::NOT_YET_IMPLEMENTED
+        status = 'omit'
+        @omit_count += 1
+      else
+        status = 'todo'
+      end
 
-      doc = {
-        'type'    => 'test',
-        'subtype' => 'it',
-        'status'  => 'todo',
-        #'setup': foo instance
-        'label'   => "#{example.description}",
-        'file'    => file,
-        'line'    => line,
-        'source'  => source(file)[line-1].strip,
-        'snippet' => code_snippet(file, line),
-        #'coverage' => {
-        #  file: lib/foo.rb
-        #  line: 11..13
-        #  code: Foo#*
-        #}
-        'time' => Time.now - @start_time
-      }
-
-      doc.update(captured_output)
-
-      return doc
+      record = test_record(example, status)
+      record['exception'] = { 'message' => reason } unless reason.empty?
+      emit record
     end
 
     #
     def example_failed(notification)
-      #super(notification)
+      example   = notification.example
+      exception = example.exception
+      record    = test_record(example, failure?(exception) ? 'fail' : 'error')
 
-      example = notification.example
-
-      file, line = example.location.split(':')
-
-      file = relative_path(file)
-      line = line.to_i
-
-      if RSpec::Expectations::ExpectationNotMetError === example.exception
-        status = 'fail'
-        if md = /expected:\s*(.*?)\n\s*got:\s*(.*?)\s+/.match(example.exception.to_s)
-          expected, returned = md[1], md[2]
-        else
-          expected, returned = nil, nil
-        end
-      else
-        status = 'error'
+      if md = /expected:\s*(.*?)\n\s*got:\s*(.*?)\s+/.match(exception.to_s)
+        record['expected'] = md[1]
+        record['returned'] = md[2]
       end
 
-      backtrace = format_backtrace(example.exception.backtrace, example.metadata)
-
-      efile, eline = parse_source_location(backtrace)
-
-      doc = {
-        'type'        => 'test',
-        'subtype'     => 'it',
-        'status'      => status,
-        'label'       => "#{example.description}",
-        #'setup' => "foo instance",
-        'file'    => file,
-        'line'    => line,
-        'source'  => source(file)[line-1].strip,
-        'snippet' => code_snippet(file, line),
-        #'coverage' =>
-        #{
-        #  'file' => lib/foo.rb
-        #  'line' => 11..13
-        #  'code' => Foo#*
-        #}
-      }
-
-      if expected or returned
-        doc.update(
-          'expected' => expected,
-          'returned' => returned,
-        )
-      end
-
-      doc.update(
-        'exception' => {
-          'message'   => example.exception.to_s.strip,
-          'class'     => example.exception.class.name,
-          'file'      => efile,
-          'line'      => eline,
-          'source'    => source(efile)[eline-1].strip,
-          'snippet'   => code_snippet(efile, eline),
-          'backtrace' => backtrace
-        },
-        'time' => Time.now - @start_time
-      )
-
-      doc.update(captured_output)
-
-      return doc
+      record['exception'] = exception_record(example, exception)
+      emit record
     end
 
-    # This method is invoked after the dumping of examples and failures.
-    def dump_summary(summary_notification)
-      #super(summary_notification)
+    # Invoked for anything RSpec has to say outside of an example, such
+    # as an error while loading a spec file. It becomes a note.
+    def message(notification)
+      text = notification.message.to_s.strip
+      return if text.empty?
+      note = { 'type' => 'note', 'text' => text }
+      # The stream has to begin with the suite, so a note that comes
+      # before it waits.
+      @early_notes ? @early_notes << note : emit(note)
+    end
 
-      duration      = summary_notification.duration
-      example_count = summary_notification.examples.size
-      failure_count = summary_notification.failed_examples.size
-      pending_count = summary_notification.pending_examples.size
+    # Invoked when all examples have run.
+    def dump_summary(summary)
+      total    = summary.examples.size
+      failed   = summary.failed_examples
+      failures = failed.count { |example| failure?(example.exception) }
+      errors   = failed.size - failures
+      pending  = summary.pending_examples.size
 
-      failed_examples = summary_notification.failed_examples
-
-      error_count = 0
-
-      failed_examples.each do |e|
-        if RSpec::Expectations::ExpectationNotMetError === e.exception
-          #failure_count += 1
-        else
-          failure_count -= 1
-          error_count += 1
-        end
-      end
-
-      passing_count = example_count - failure_count - error_count - pending_count
-
-      doc = {
-        'type' => 'final',
-        'time' => duration,
+      emit(
+        'type'   => 'final',
+        'time'   => summary.duration,
         'counts' => {
-          'total' => example_count,
-          'pass'  => passing_count,
-          'fail'  => failure_count,
-          'error' => error_count,
-          'omit'  => 0,
-          'todo'  => pending_count
+          'total' => total,
+          'pass'  => total - failed.size - pending,
+          'fail'  => failures,
+          'error' => errors,
+          'omit'  => @omit_count,
+          'todo'  => pending - @omit_count
         }
-      }
-      return doc
+      )
+      finish
     end
 
-    # This gets invoked after the summary if option is set to do so.
-    #def dump_pending
-    #end
-
-    def seed(notification)
-      @seed = notification.seed
-    end
-
-    # Add any messages as notes.
-    def message(message_notification)
-      doc = {
-        'type' => 'note',
-        'text' => message_notification.message
-      }
-      return doc
-    end
-
-    #
-    # NOTE: None of the following are being used. If ever added, be sure
-    #       to activate in register calls below.
-    #
-
-    # (not used)
-    def stop(examples_notification)
-      super(examples_notification)
-    end
-
-    # (not used)
-    def start_dump(null_notification)
-    end
-
-    # (not used)
-    def dump_pending(examples_notification)
-    end
-
-    # (not used)
-    def dump_failures(examples_notification)
-    end
-
-    # (not used)
-    def close(null_notification)
-      # there is a super method for this
-      super(null_notification)
+    # Invoked last. Makes sure the real output streams are back.
+    def close(notification)
+      release_output
+      super
     end
 
   private
 
-    # Returns a String of source code.
-    def code_snippet(file, line)
-      s = []
-      if File.file?(file)
-        source = source(file)
-        radius = 2 # TODO: make customizable (number of surrounding lines to show)
-        region = [line - radius, 1].max ..
-                 [line + radius, source.length].min
-
-        s = region.map do |n|
-          {n => source[n-1].chomp}
-        end
-      end
-      return s
+    # Write a record to the stream. Subclasses define this.
+    def emit(record)
+      raise NotImplementedError
     end
 
-    # Cache source file text. This is only used if the TAP-Y stream
-    # doesn not provide a snippet and the test file is locatable.
+    # Write whatever ends the stream.
+    def finish
+    end
+
+    # What every test record has: where the example is and what it
+    # printed.
+    def test_record(example, status)
+      record = {
+        'type'    => 'test',
+        'subtype' => 'it',
+        'status'  => status,
+        'label'   => example.description.to_s
+      }
+
+      file, line = split_location(example.location)
+      if file
+        record['file'] = file
+        record['line'] = line
+        add_source(record, file, line)
+      end
+
+      record.update(captured_output)
+      record['time'] = Time.now - @start_time
+      record
+    end
+
+    #
+    def exception_record(example, exception)
+      backtrace  = format_backtrace(exception.backtrace || [], example.metadata)
+      file, line = split_location(backtrace.first)
+
+      record = {
+        'message' => exception.to_s.strip,
+        'class'   => exception.class.name
+      }
+      if file
+        record['file'] = file
+        record['line'] = line
+        add_source(record, file, line)
+      end
+      record['backtrace'] = backtrace
+      record
+    end
+
+    # An expectation that wasn't met is a failure, as is a pending
+    # example that passed. Anything else raised is an error.
+    def failure?(exception)
+      return true if Core::Pending::PendingExampleFixedError === exception
+      return true if defined?(RSpec::Expectations::ExpectationNotMetError) &&
+                     RSpec::Expectations::ExpectationNotMetError === exception
+      return true if defined?(RSpec::Mocks::MockExpectationError) &&
+                     RSpec::Mocks::MockExpectationError === exception
+      false
+    end
+
+    # Split `file:line`, with or without more after it, in two.
+    def split_location(location)
+      md = /\A(.+?):(\d+)(?::|\z)/.match(location.to_s)
+      md ? [relative_path(md[1]), md[2].to_i] : [nil, nil]
+    end
+
+    # Add the line of source, and the lines around it, to a record.
+    def add_source(record, file, line)
+      lines = source(file) or return
+      record['source']  = lines[line - 1].to_s.strip
+      record['snippet'] = snippet(lines, line)
+    end
+
+    # The lines of a source file, or nil if it can't be read.
     def source(file)
-      @_source_cache ||= {}
-      @_source_cache[file] ||= (
-        File.readlines(file)
-      )
+      return @source_cache[file] if @source_cache.key?(file)
+      @source_cache[file] = File.file?(file) ? File.readlines(file) : nil
     end
 
-    # Parse source location from caller, caller[0] or an Exception object.
-    def parse_source_location(caller)
-      case caller
-      when Exception
-        trace  = caller.backtrace #.reject{ |bt| bt =~ INTERNALS }
-        caller = trace.first
-      when Array
-        caller = caller.first
-      end
-      caller =~ /(.+?):(\d+(?=:|\z))/ or return ""
-      source_file, source_line = $1, $2.to_i
-      return source_file, source_line
+    # The lines around a line of source, as a list of number => text.
+    def snippet(lines, line)
+      first = [line - SNIPPET_RADIUS, 1].max
+      last  = [line + SNIPPET_RADIUS, lines.size].min
+      (first..last).map { |n| { n => lines[n - 1].chomp } }
+    end
+
+    # A path under the working directory, written from `./`.
+    def relative_path(path)
+      directory = File.expand_path('.') + File::SEPARATOR
+      path.start_with?(directory) ? './' + path[directory.size..-1] : path
     end
 
     #
-    def reset_output
-      @_oldout = $stdout
-      @_olderr = $stderr
-
-      @_newout = StringIO.new
-      @_newerr = StringIO.new
-
-      $stdout = @_newout
-      $stderr = @_newerr
+    def format_backtrace(backtrace, metadata)
+      configuration.backtrace_formatter.format_backtrace(backtrace, metadata)
     end
 
     #
+    def configuration
+      RSpec.configuration
+    end
+
+    #
+    def capture_output
+      release_output
+      @real_stdout, @real_stderr = $stdout, $stderr
+      @stdout, @stderr = StringIO.new, StringIO.new
+      $stdout, $stderr = @stdout, @stderr
+    end
+
+    # Put back the real output streams, unless the example changed them
+    # itself.
+    def release_output
+      return unless @stdout
+      $stdout = @real_stdout if $stdout.equal?(@stdout)
+      $stderr = @real_stderr if $stderr.equal?(@stderr)
+      @stdout = @stderr = nil
+    end
+
+    # What the example printed, as part of a record.
     def captured_output
-      return unless (@_newout && @_newerr)
+      return {} unless @stdout
 
-      stdout = @_newout.string.chomp("\n")
-      stderr = @_newerr.string.chomp("\n")
+      stdout = @stdout.string.chomp("\n")
+      stderr = @stderr.string.chomp("\n")
+      release_output
 
-      doc = {}
-      doc['stdout'] = stdout unless stdout.empty?
-      doc['stderr'] = stderr unless stderr.empty?
-
-      $stdout = @_oldout
-      $stderr = @_olderr
-
-      return doc
-    end
-
-    #
-    def capture_io
-      ostdout, ostderr = $stdout, $stderr
-      cstdout, cstderr = StringIO.new, StringIO.new
-      $stdout, $stderr = cstdout, cstderr
-
-      yield
-
-      return cstdout.string.chomp("\n"), cstderr.string.chomp("\n")
-    ensure
-      $stdout = ostdout
-      $stderr = ostderr
-    end
-
-    #
-    def relative_path_regex
-      @relative_path_regex ||= /(\A|\s)#{File.expand_path('.')}(#{File::SEPARATOR}|\s|\Z)/
-    end
-
-    # Get relative path of file.
-    #
-    # line - current code line [String] 
-    #
-    # Returns relative path to line. [String] 
-    def relative_path(line)
-      line = line.sub(relative_path_regex, "\\1.\\2".freeze)
-      line = line.sub(/\A([^:]+:\d+)$/, '\\1'.freeze)
-      return nil if line == '-e:1'.freeze
-      line
-    rescue SecurityError
-      nil
-    end
-
-    #
-    def format_backtrace(*args)
-      backtrace_formatter.format_backtrace(*args)
-    end
-
-    #
-    def backtrace_formatter
-      RSpec.configuration.backtrace_formatter
+      record = {}
+      record['stdout'] = stdout unless stdout.empty?
+      record['stderr'] = stderr unless stderr.empty?
+      record
     end
 
   end
 
+  # Formats in TAP-Y, a stream of YAML documents.
+  #
+  #     $ rspec -f RSpec::TapY | tapout
   #
   class TapY < TapBaseFormatter
-    ::RSpec::Core::Formatters.register self, 
-        :start,
-        :example_group_started,
-        :example_group_finished,
-        :example_started,
-        :example_passed,
-        :example_failed,
-        :example_pending,
-        :dump_summary,
-        :seed,
-        :message,
-        #:stop,
-        #:start_dump,
-        #:dump_pending,
-        #:dump_failures,
-        :close
+    Core::Formatters.register self, *NOTIFICATIONS
 
-    def initialize(*args)
+    def initialize(output)
       require 'yaml'
-      super(*args)
+      super
     end
-    def start(*args)
-      output.puts super(*args).to_yaml
+
+  private
+
+    def emit(record)
+      output.puts record.to_yaml
     end
-    def example_group_started(*args)
-      output.puts super(*args).to_yaml
-    end
-    def example_passed(*args)
-      output.puts super(*args).to_yaml
-    end
-    def example_pending(*args)
-      output.puts super(*args).to_yaml
-    end
-    def example_failed(*args)
-      output.puts super(*args).to_yaml
-    end
-    #def dump_summary(duration, example_count, failure_count, pending_count)
-    #  output.puts super(duration, example_count, failure_count, pending_count).to_yaml
-    #  output.puts "..."
-    #end
-    def dump_summary(*args)
-      output.puts super(*args).to_yaml
-      output.puts "..."
+
+    def finish
+      output.puts '...'
     end
   end
 
-  #rspec -f RSpec::TapY spec/*.rb | tapout progress
+  # Formats in TAP-J, a JSON document on each line.
+  #
+  #     $ rspec -f RSpec::TapJ | tapout
+  #
   class TapJ < TapBaseFormatter
-    ::RSpec::Core::Formatters.register self, 
-        :start,
-        :example_group_started,
-        :example_group_finished,
-        :example_started,
-        :example_passed,
-        :example_failed,
-        :example_pending,
-        :dump_summary,
-        :seed,
-        :message,
-        #:stop,
-        #:start_dump,
-        #:dump_pending,
-        #:dump_failures,
-        :close
+    Core::Formatters.register self, *NOTIFICATIONS
 
-    def initialize(*args)
+    def initialize(output)
       require 'json'
-      super(*args)
+      super
     end
-    def start(*args)
-      output.puts super(*args).to_json
-    end
-    def example_group_started(*args)
-      output.puts super(*args).to_json
-    end
-    def example_passed(*args)
-      output.puts super(*args).to_json
-    end
-    def example_pending(*args)
-      output.puts super(*args).to_json
-    end
-    def example_failed(*args)
-      output.puts super(*args).to_json
-    end
-    def dump_summary(*args)
-      output.puts super(*args).to_json
+
+  private
+
+    def emit(record)
+      output.puts JSON.generate(record)
     end
   end
 
-    #end
-  #end
 end

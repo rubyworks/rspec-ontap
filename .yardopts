@@ -1,9 +1,8 @@
---title VCLog
+--title "RSpec On Tap"
+--readme README.md
 --protected
 --private
 lib/
 -
 *.md
 *.txt
-*.yml
-
