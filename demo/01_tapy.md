@@ -12,7 +12,7 @@ Given a spec file:
       end
 
       it "errors" do
-        raise NameError, "oops"
+        raise "oops"
       end
     end
 
@@ -82,7 +82,7 @@ Anything else raised is an error.
     erring = tests['errors']
 
     erring['status']                #=> 'error'
-    erring['exception']['class']    #=> 'NameError'
+    erring['exception']['class']    #=> 'RuntimeError'
     erring['exception']['message']  #=> 'oops'
     erring['exception']['line']     #=> 11
 
